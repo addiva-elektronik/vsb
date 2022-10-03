@@ -2,6 +2,7 @@ EXEC         := vsb
 OBJS         := vsb.o
 CPPFLAGS     += -D_XOPEN_SOURCE=600 -D_DEFAULT_SOURCE -D_GNU_SOURCE
 CFLAGS       += -W -Wall -Wextra
+PREFIX       ?= /usr/local
 
 all: $(EXEC)
 
