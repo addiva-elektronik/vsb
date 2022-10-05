@@ -21,6 +21,10 @@
  * THE SOFTWARE.
  */
 
+#define _XOPEN_SOURCE 600	/* Unlock PTY functions */
+#define _DEFAULT_SOURCE		/* Same, newer GLIBC */
+#define _GNU_SOURCE		/* Same, older GLIBC */
+
 #include <err.h>
 #include <fcntl.h>
 #include <poll.h>
