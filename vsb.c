@@ -39,29 +39,33 @@
 
 static char *prognm;
 static int   debug;
+static int   dummy[42];
 
 int get_term(int id)
 {
-	int fd;
-	int res;
 	char *name;
+	int rc;
+	int fd;
 
-	fd = posix_openpt(O_RDWR);
+	fd = posix_openpt(O_RDWR | O_NOCTTY);
 	if (fd < 0)
 		err(1, "Failed opening PTY");
 
-	res = grantpt(fd);
-	if (res)
+	rc = grantpt(fd);
+	if (rc)
 		err(1, "Failed granting PTY");
 
-	res = unlockpt(fd);
-	if (res)
+	rc = unlockpt(fd);
+	if (rc)
 		err(1, "Failed unlocking PTY");
 
 	name = ptsname(fd);
 	if (!name)
 		err(1, "Failed acquiring slave PTY");
 	log("device %d => %s", id, name);
+
+	/* https://stackoverflow.com/questions/66105153/non-blocking-pseudo-terminal-recovery-after-pollhup */
+	dummy[id - 1] = open(name, O_WRONLY | O_NOCTTY);
 
 	return fd;
 }
@@ -84,8 +88,12 @@ static void forward(int fd, struct pollfd *pfd, int num)
 
 static int process(struct pollfd *pfd, int num)
 {
+	for (int i = 0; i < num; i++) {
+		pfd[i].fd = get_term(i + 1);
+		pfd[i].events = POLLHUP | POLLIN;
+	}
 
-	while (poll(pfd, num, -1) != -1) {
+	while (poll(pfd, num, 1) != -1) {
 		for (int i = 0; i < num; i++) {
 			if (!pfd[i].revents)
 				continue;
@@ -97,6 +105,11 @@ static int process(struct pollfd *pfd, int num)
 				pfd[i].revents &= ~POLLHUP;
 			}
 		}
+	}
+
+	for (int i = 0; i < num; i++) {
+		close(pfd[i].fd);
+		close(dummy[i]);
 	}
 
 	return 0;
@@ -143,11 +156,6 @@ int main(int argc, char **argv)
 	pfd = calloc(num, sizeof(*pfd));
 	if (!pfd)
 		err(1, "Failed allocating %d x pollfd", num);
-
-	for (int i = 0; i < num; i++) {
-		pfd[i].fd = get_term(i + 1);
-		pfd[i].events = POLLIN;
-	}
 
 	return process(pfd, num);
 }
