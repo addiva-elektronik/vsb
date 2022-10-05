@@ -1,4 +1,4 @@
-/*  Virtual serial bus using Linux PTYs
+/* Virtual serial bus using Linux PTYs
  *
  * Copyright (C) 2022  Addiva Elektronik AB
  *
@@ -39,34 +39,6 @@
 
 static char *prognm;
 static int   debug;
-
-#if 0
-	set_term(read_fd);
-
-static void set_term(int fd)
-{
-	struct termios termios;
-	int res;
-
-	res = tcgetattr(fd, &termios);
-	if (res) {
-		dbg("TERM get error");
-		return;
-	}
-
-	cfmakeraw(&termios);
-	termios.c_lflag &= ~(ICANON);
-	termios.c_cc[VMIN] = 0;
-	termios.c_cc[VTIME] = 10;	/* One second */
-
-	res = tcsetattr(fd, TCSANOW, &termios);
-	if (res) {
-		dbg("TERM set error");
-		return;
-	}
-
-}
-#endif
 
 int get_term(int id)
 {
