@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <string.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -40,10 +41,13 @@
 static char *prognm;
 static int   debug;
 static int   dummy[42];
+static char *devices[8];
+static char *cmds[8][42];
+static pid_t pids[8];
 
 int get_term(int id)
 {
-	char *name;
+	int num = id - 1;
 	int rc;
 	int fd;
 
@@ -59,13 +63,39 @@ int get_term(int id)
 	if (rc)
 		err(1, "failed unlocking PTY");
 
-	name = ptsname(fd);
-	if (!name)
-		err(1, "Failed acquiring slave PTY");
-	log("device %d => %s", id, name);
+	devices[num] = ptsname(fd);
+	if (!devices[num])
+		err(1, "failed acquiring slave PTY");
 
 	/* https://stackoverflow.com/questions/66105153/non-blocking-pseudo-terminal-recovery-after-pollhup */
-	dummy[id - 1] = open(name, O_WRONLY | O_NOCTTY);
+	dummy[num] = open(devices[num], O_WRONLY | O_NOCTTY);
+
+	if (cmds[num][0]) {
+		char *cmd = cmds[num][0];
+		char buf[256] = { 0 };
+
+		for (int i = 0; cmds[num][i]; i++) {
+			if (!strcmp(cmds[num][i], "%p"))
+				cmds[num][i] = devices[num];
+		}
+
+		pids[num] = fork();
+		if (pids[num] == -1)
+			err(1, "failed forking off child %d: %s", id, cmd);
+		if (pids[num] == 0) {
+			execvp(cmd, cmds[num]);
+			_exit(1); /* we never get here */
+		}
+
+		/* parent continues here */
+		for (int j = 0; cmds[num][j]; j++) {
+			strcat(buf, cmds[num][j]);
+			strcat(buf, " ");
+		}
+		log("execmd %d => %s", id, buf);
+	} else {
+		log("device %d => %s", id, devices[num]);
+	}
 
 	return fd;
 }
@@ -118,13 +148,17 @@ static int process(struct pollfd *pfd, int num)
 static int usage(int rc)
 {
 	fprintf(rc ? stderr : stdout,
-		"Usage: %s [-d] [-n NUM]\n"
+		"Usage: %s [-d] [-n NUM] [-- prog1 -a -r -g %%p -- prog2 -arg %%p [-- ...]]\n"
 		"\n"
 		"Options:\n"
 		" -f         Enable debug messages\n"
 		" -n NUM     Number of serial ports to create, default: 0\n"
+		"Arguments:\n"
+		" prog ARGS  Programs to start for each serial port created.\n"
+		"            Separated from %s and other progs with '--'\n"
+		"            Use %%p to denote where add the serial port name.\n"
 		"\n"
-		"Copyright (c) 2022  Addiva Elektronik AB\n", prognm);
+		"Copyright (c) 2022  Addiva Elektronik AB\n", prognm, prognm);
 	return rc;
 }
 
@@ -149,6 +183,22 @@ int main(int argc, char **argv)
 			return usage(0);
 		}
 	}
+
+	c = 0;
+	while (optind < argc) {
+		if (!strcmp(argv[optind], "--")) {
+			optind++;
+			num++;
+			c = 0;
+			continue;
+		}
+
+		cmds[num][c++] = argv[optind++];
+		cmds[num][c] = NULL;
+	}
+
+	if (cmds[num][0])
+		num++;
 
 	if (!num)
 		return usage(1);
