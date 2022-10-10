@@ -49,15 +49,15 @@ int get_term(int id)
 
 	fd = posix_openpt(O_RDWR | O_NOCTTY);
 	if (fd < 0)
-		err(1, "Failed opening PTY");
+		err(1, "failed opening PTY");
 
 	rc = grantpt(fd);
 	if (rc)
-		err(1, "Failed granting PTY");
+		err(1, "failed granting PTY");
 
 	rc = unlockpt(fd);
 	if (rc)
-		err(1, "Failed unlocking PTY");
+		err(1, "failed unlocking PTY");
 
 	name = ptsname(fd);
 	if (!name)
@@ -76,13 +76,13 @@ static void forward(int fd, struct pollfd *pfd, int num)
 	char c;
 
 	bytes = read(fd, &c, 1);
-	dbg("Read %d bytes from %s, forwarding ...", bytes, ptsname(fd) ?: "<nil>");
+	dbg("read %d bytes from %s, forwarding ...", bytes, ptsname(fd) ?: "<nil>");
 	for (int i = 0; i < num; i++) {
 		if (pfd[i].fd == fd)
 			continue;
 
 		if (write(pfd[i].fd, &c, 1) == -1)
-			warn("Failed forwarding to %s", ptsname(pfd[i].fd) ?: "<nil>");
+			warn("failed forwarding to %s", ptsname(pfd[i].fd) ?: "<nil>");
 	}
 }
 
