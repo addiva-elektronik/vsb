@@ -29,6 +29,7 @@ Origin & References
 -------------------
 
 Made by Addiva Elektronik AB, Sweden.  Available as Open Source under
-the MIT license.
+the MIT license.  Please note, libus has a 3-clause BSD license which
+contains the advertising clause.
 
 [socat(1)]: https://manpages.org/socat
