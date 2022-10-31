@@ -151,7 +151,7 @@ static int usage(int rc)
 		"Usage: %s [-d] [-n NUM] [-- prog1 -a -r -g %%p -- prog2 -arg %%p [-- ...]]\n"
 		"\n"
 		"Options:\n"
-		" -f         Enable debug messages\n"
+		" -d         Enable debug messages\n"
 		" -n NUM     Number of serial ports to create, default: 0\n"
 		"Arguments:\n"
 		" prog ARGS  Programs to start for each serial port created.\n"
@@ -174,8 +174,11 @@ int main(int argc, char **argv)
 	else
 		prognm = argv[0];
 
-	while ((c = getopt(argc, argv, "hn:")) != EOF) {
+	while ((c = getopt(argc, argv, "dhn:")) != EOF) {
 		switch (c) {
+		case 'd':
+			debug = 1;
+			break;
 		case 'n':
 			num = atoi(optarg);
 			break;
